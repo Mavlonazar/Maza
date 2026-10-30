@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MAZA</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;800&display=swap" rel="stylesheet">
+<!--
+НАСТРОЙКА FIREBASE (один раз):
+1. console.firebase.google.com → Добавить проект → Веб-приложение (</>) → скопируй firebaseConfig ниже.
+2. Build → Authentication → Sign-in method → включи "Email/Password".
+3. Build → Firestore Database → Создать (режим production) → вкладка Rules → вставь и опубликуй:
+   rules_version='2'; service cloud.firestore { match /databases/{d}/documents { match /{document=**} { allow read, write: if request.auth!=null; } } }
+4. Выложи этот файл на бесплатный хостинг (Firebase Hosting / Netlify / GitHub Pages) — нужен HTTPS, иначе звонки и микрофон не работают.
+-->
+<style>
+:root{--a:#12a594;--bg:#f3f5f7;--c:#fff;--t:#10151c;--m:#7b8794;--l:#e5e9ee;--in:#eef1f4}
+.dark{--bg:#0e1217;--c:#171d25;--t:#eef2f6;--m:#8c97a4;--l:#252d38;--in:#202833}
+*{box-sizing:border-box;margin:0;font-family:Manrope,system-ui,sans-serif}
+html,body{height:100%;background:var(--bg);color:var(--t);overflow:hidden}
+[hidden]{display:none!important}
+button{border:0;background:none;color:inherit;cursor:pointer;font-weight:600}
+input{border:0;outline:0;background:var(--in);color:var(--t);padding:13px 16px;border-radius:14px;font-size:15px;width:100%}
+input:focus-visible,button:focus-visible{outline:2px solid var(--a);outline-offset:2px}
+.btn{background:var(--a);color:#fff;padding:13px 20px;border-radius:14px;width:100%;transition:transform .15s}
+.btn:active{transform:scale(.97)}
+.logo{font-weight:800;font-size:34px;letter-spacing:-1px}.logo i{color:var(--a);font-style:normal}
+#auth,#setup{height:100%;display:grid;place-items:center;padding:20px}
+.card{background:var(--c);border-radius:24px;padding:32px 26px;width:100%;max-width:380px;display:grid;gap:12px;box-shadow:0 20px 50px -20px rgba(16,21,28,.18)}
+.card p{color:var(--m);font-size:14px;line-height:1.5}.err{color:#d6455d;font-size:13px;min-height:16px}
+.sw{background:none;color:var(--a);font-size:14px}
+#app{height:100%;display:grid;grid-template-columns:340px 1fr;padding-top:env(safe-area-inset-top)}
+#side{background:var(--c);border-right:1px solid var(--l);display:flex;flex-direction:column;min-height:0}
+.top{padding:16px;display:grid;gap:12px}.row{display:flex;align-items:center;gap:10px}
+.ib{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;font-size:17px;background:var(--in);flex:none}
+#list{overflow:auto;flex:1}
+.it{display:flex;gap:12px;padding:12px 16px;align-items:center;cursor:pointer;transition:background .15s}
+.it:hover,.it.on{background:var(--in)}
+.av{width:46px;height:46px;border-radius:16px;background:var(--a);color:#fff;display:grid;place-items:center;font-weight:800;flex:none;font-size:18px}
+.it b{display:block;font-size:15px}.it span{font-size:13px;color:var(--m);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+.empty{color:var(--m);text-align:center;padding:40px 24px;font-size:14px;line-height:1.5}
+#main{display:flex;flex-direction:column;min-height:0;min-width:0}
+#hd{background:var(--c);border-bottom:1px solid var(--l);padding:12px 16px;display:flex;align-items:center;gap:12px}
+#hd b{flex:1}.back{display:none}
+#msgs{flex:1;overflow:auto;padding:18px 16px;display:flex;flex-direction:column;gap:6px}
+.m{max-width:min(78%,460px);padding:10px 14px;border-radius:18px 18px 18px 6px;background:var(--c);font-size:15px;line-height:1.4;word-wrap:break-word;animation:pop .18s ease-out}
+.m.me{align-self:flex-end;background:var(--a);color:#fff;border-radius:18px 18px 6px 18px}
+.m small{display:block;font-size:11px;opacity:.6;margin-top:3px;text-align:right}
+.m audio{height:36px;max-width:100%}
+@keyframes pop{from{transform:scale(.94);opacity:0}}
+#bar{background:var(--c);border-top:1px solid var(--l);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px;align-items:center}
+#mic.rec{background:#d6455d;color:#fff;animation:pl 1s infinite}
+@keyframes pl{50%{opacity:.6}}
+#ph{flex:1;display:grid;place-items:center;color:var(--m);text-align:center;padding:20px}
+#call{position:fixed;inset:0;background:#0b0f14;z-index:9;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#fff;gap:14px}
+#rv{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#lv{position:absolute;right:16px;top:calc(16px + env(safe-area-inset-top));width:110px;height:150px;object-fit:cover;border-radius:16px;background:#222;transform:scaleX(-1)}
+#cn,#cs,#cb{position:relative}#cn{font-size:24px;font-weight:800;text-shadow:0 2px 10px #0008}
+#cb{display:flex;gap:16px;position:absolute;bottom:calc(36px + env(safe-area-inset-bottom))}
+#cb button{width:60px;height:60px;border-radius:50%;background:#ffffff26;font-size:22px;backdrop-filter:blur(8px)}
+#cb .red{background:#e5484d}#cb .grn{background:#30a46c}
+#set{position:fixed;inset:0;background:#0007;z-index:8;display:grid;place-items:center;padding:20px}
+.sws{display:flex;gap:10px}.sws button{width:34px;height:34px;border-radius:50%;border:3px solid var(--c);box-shadow:0 0 0 1px var(--l)}
+@media(max-width:760px){#app{grid-template-columns:1fr}#main{display:none}#app.open #side{display:none}#app.open #main{display:flex}.back{display:grid}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style></head><body>
+
+<div id="setup" hidden><div class="card"><div class="logo">MA<i>Z</i>A</div><p>Открой файл maza.html в редакторе и вставь свой firebaseConfig в начало скрипта. Шаги описаны в комментарии вверху файла.</p></div></div>
+
+<div id="auth" hidden><div class="card">
+<div class="logo">MA<i>Z</i>A</div><p id="at">Войди, чтобы писать и звонить.</p>
+<input id="nm" placeholder="Имя" hidden autocomplete="name">
+<input id="un" placeholder="Логин (латиницей)" autocapitalize="none" autocomplete="username">
+<input id="pw" type="password" placeholder="Пароль (от 6 символов)" autocomplete="current-password">
+<div class="err" id="er"></div>
+<button class="btn" id="go">Войти</button>
+<button class="sw" id="sw">Создать аккаунт</button></div></div>
+
+<div id="app" hidden>
+<aside id="side"><div class="top"><div class="row"><div class="logo" style="flex:1;font-size:26px">MA<i>Z</i>A</div><button class="ib" id="gear" aria-label="Настройки">⚙</button></div>
+<input id="q" placeholder="Найти по логину"></div><div id="list"></div></aside>
+<section id="main"><div id="ph"><div><div class="logo" style="font-size:44px">MA<i>Z</i>A</div><p style="margin-top:8px">Выбери чат или найди человека по логину.</p></div></div>
+<div id="chat" hidden style="display:none;flex-direction:column;flex:1;min-height:0">
+<div id="hd"><button class="ib back" id="bk" aria-label="Назад">‹</button><div class="av" id="pa" style="width:40px;height:40px;font-size:16px"></div><b id="pn"></b>
+<button class="ib" id="ac" aria-label="Аудиозвонок">📞</button><button class="ib" id="vc" aria-label="Видеозвонок">🎥</button></div>
+<div id="msgs"></div>
+<div id="bar"><input id="inp" placeholder="Сообщение" autocomplete="off"><button class="ib" id="mic" aria-label="Голосовое">🎤</button><button class="ib" id="snd" style="background:var(--a);color:#fff" aria-label="Отправить">➤</button></div></div></section></div>
+
+<div id="set" hidden><div class="card"><b>Настройки</b><p>Цвет</p><div class="sws" id="sws"></div>
+<button class="btn" id="dk" style="background:var(--in);color:var(--t)">Тёмная тема</button>
+<button class="btn" id="lo" style="background:var(--in);color:#d6455d">Выйти</button>
+<button class="sw" id="cl">Закрыть</button></div></div>
+
+<div id="call" hidden><video id="rv" autoplay playsinline></video><video id="lv" autoplay playsinline muted></video>
+<div id="cn"></div><div id="cs"></div>
+<div id="cb"><button id="cm" aria-label="Микрофон">🎙</button><button id="cc" aria-label="Камера">📷</button><button class="grn" id="ca" aria-label="Принять">📞</button><button class="red" id="ce" aria-label="Завершить">✕</button></div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const FIREBASE_CONFIG={apiKey:"AIzaSyCBk6Q0lzumope-FNYRLzXcUfJYQ1Es_2Y",authDomain:"maza-messages.firebaseapp.com",projectId:"maza-messages",storageBucket:"maza-messages.firebasestorage.app",messagingSenderId:"1081415920508",appId:"1:1081415920508:web:9a2ba9218ab7097f6f92f9"};
+const $=s=>document.querySelector(s),ls=(k,v)=>{try{return v===undefined?localStorage.getItem(k):localStorage.setItem(k,v)}catch(e){}};
+const ACC=['#12a594','#4f6bed','#e5484d','#f08a24','#10151c'];
+function theme(){document.documentElement.style.setProperty('--a',ls('a')||ACC[0]);document.documentElement.classList.toggle('dark',ls('d')==='1')}
+theme();
+if(!FIREBASE_CONFIG.apiKey){$('#setup').hidden=false}else boot();
+
+function boot(){
+firebase.initializeApp(FIREBASE_CONFIG);
+const auth=firebase.auth(),db=firebase.firestore();
+db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+const TS=firebase.firestore.FieldValue.serverTimestamp;
+let me,peer,chatId,uM,uC,uK,reg=false;
+const ini=n=>(n||'?').trim()[0].toUpperCase(),fmt=d=>d?d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';
+const show=(id,v)=>$(id).hidden=!v;
+
+// ---- auth
+$('#sw').onclick=()=>{reg=!reg;$('#nm').hidden=!reg;$('#go').textContent=reg?'Создать аккаунт':'Войти';$('#sw').textContent=reg?'У меня уже есть аккаунт':'Создать аккаунт';$('#er').textContent=''};
+$('#go').onclick=async()=>{
+ const u=$('#un').value.trim().toLowerCase(),p=$('#pw').value,n=$('#nm').value.trim();$('#er').textContent='';
+ if(!/^[a-z0-9_]{3,20}$/.test(u))return $('#er').textContent='Логин: 3–20 символов, латиница, цифры, _';
+ try{
+  if(reg){if(!n)return $('#er').textContent='Введи имя';
+   const r=await auth.createUserWithEmailAndPassword(u+'@maza.app',p);
+   await db.collection('users').doc(r.user.uid).set({name:n,username:u});}
+  else await auth.signInWithEmailAndPassword(u+'@maza.app',p);
+ }catch(e){const c=e.code||'';$('#er').textContent=c.includes('in-use')?'Этот логин занят':c.includes('weak')?'Пароль слишком короткий':c.includes('network')?'Нет интернета':c.includes('credential')||c.includes('not-found')||c.includes('wrong')?'Неверный логин или пароль':'Ошибка: '+c}
+};
+auth.onAuthStateChanged(async u=>{
+ if(!u){me=null;[uM,uC,uK].forEach(f=>f&&f());show('#app',0);show('#auth',1);return}
+ let s,t=0;while(t++<10){s=await db.collection('users').doc(u.uid).get().catch(()=>null);if(s&&s.exists)break;await new Promise(r=>setTimeout(r,400))}
+ me={uid:u.uid,...(s&&s.data()||{name:'Я',username:''})};
+ show('#auth',0);show('#app',1);loadChats();listenCalls();
+});
+
+// ---- chats
+function loadChats(){
+ uC&&uC();
+ uC=db.collection('chats').where('members','array-contains',me.uid).onSnapshot(s=>{
+  const L=$('#list');L.textContent='';
+  const ds=s.docs.map(d=>({id:d.id,...d.data({serverTimestamps:'estimate'})})).sort((a,b)=>(b.ts?b.ts.seconds:0)-(a.ts?a.ts.seconds:0));
+  if(!ds.length){L.innerHTML='<div class="empty">Пока нет чатов.<br>Найди друга по логину выше.</div>';return}
+  ds.forEach(c=>{const id=c.members.find(x=>x!==me.uid),n=(c.names||{})[id]||'Контакт';
+   L.append(item({uid:id,name:n},c.last||'',c.id===chatId))});
+ });
+}
+function item(p,sub,on){
+ const e=document.createElement('div');e.className='it'+(on?' on':'');
+ e.innerHTML='<div class="av"></div><div><b></b><span></span></div>';
+ e.querySelector('.av').textContent=ini(p.name);e.querySelector('b').textContent=p.name;e.querySelector('span').textContent=sub;
+ e.onclick=()=>openChat(p);return e}
+let qt;$('#q').oninput=()=>{clearTimeout(qt);qt=setTimeout(async()=>{
+ const v=$('#q').value.trim().toLowerCase();if(!v)return loadChats();
+ uC&&uC();const s=await db.collection('users').where('username','==',v).get().catch(()=>null);const L=$('#list');L.textContent='';
+ if(!s||s.empty)return L.innerHTML='<div class="empty">Никого не найдено. Проверь логин.</div>';
+ s.forEach(d=>{if(d.id!==me.uid)L.append(item({uid:d.id,name:d.data().name},'@'+d.data().username))})},350)};
+
+function openChat(p){
+ peer=p;chatId=[me.uid,p.uid].sort().join('_');$('#q').value='';loadChats();
+ $('#ph').hidden=true;const c=$('#chat');c.hidden=false;c.style.display='flex';$('#app').classList.add('open');
+ $('#pn').textContent=p.name;$('#pa').textContent=ini(p.name);uM&&uM();
+ uM=db.collection('chats').doc(chatId).collection('messages').orderBy('ts').onSnapshot(s=>{
+  const B=$('#msgs');B.textContent='';
+  s.docs.forEach(d=>{const m=d.data({serverTimestamps:'estimate'}),e=document.createElement('div');e.className='m'+(m.from===me.uid?' me':'');
+   if(m.audio){const a=document.createElement('audio');a.controls=true;a.src=m.audio;e.append(a)}else e.append(document.createTextNode(m.text));
+   const t=document.createElement('small');t.textContent=fmt(m.ts&&m.ts.toDate());e.append(t);B.append(e)});
+  B.scrollTop=B.scrollHeight});
+}
+$('#bk').onclick=()=>{$('#app').classList.remove('open')};
+function send(x){
+ if(!peer)return;const last=x.text||'🎤 Голосовое';
+ db.collection('chats').doc(chatId).collection('messages').add({from:me.uid,ts:TS(),...x});
+ db.collection('chats').doc(chatId).set({members:[me.uid,peer.uid],names:{[me.uid]:me.name,[peer.uid]:peer.name},last,ts:TS()},{merge:true});
+}
+const sendText=()=>{const v=$('#inp').value.trim();if(v){send({text:v});$('#inp').value=''}};
+$('#snd').onclick=sendText;$('#inp').onkeydown=e=>e.key==='Enter'&&sendText();
+
+// ---- voice messages (до 60 сек, лёгкий битрейт для слабой сети)
+let rec,ch,t0,auto;
+$('#mic').onclick=async()=>{
+ if(rec&&rec.state==='recording')return rec.stop();
+ try{const st=await navigator.mediaDevices.getUserMedia({audio:true});
+  rec=new MediaRecorder(st,{audioBitsPerSecond:24000});ch=[];
+  rec.ondataavailable=e=>ch.push(e.data);
+  rec.onstop=()=>{clearTimeout(auto);st.getTracks().forEach(t=>t.stop());$('#mic').classList.remove('rec');$('#inp').placeholder='Сообщение';
+   if(Date.now()-t0<700)return;const f=new FileReader();f.onload=()=>send({audio:f.result});f.readAsDataURL(new Blob(ch,{type:rec.mimeType}))};
+  rec.start();t0=Date.now();$('#mic').classList.add('rec');$('#inp').placeholder='Запись… нажми 🎤, чтобы отправить';auto=setTimeout(()=>rec.stop(),60000);
+ }catch(e){alert('Нет доступа к микрофону')}
+};
+
+// ---- calls (WebRTC, сигналинг через Firestore)
+const ICE={iceCandidatePoolSize:4,iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'},{urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]};
+let pc,ls_,cref,cu=[],pend=[],inc=null,isVid=false;
+const cst=t=>$('#cs').textContent=t;
+async function prep(video){
+ ls_=await navigator.mediaDevices.getUserMedia({audio:true,video:video?{facingMode:'user'}:false});
+ pc=new RTCPeerConnection(ICE);ls_.getTracks().forEach(t=>pc.addTrack(t,ls_));
+ const rs=new MediaStream();$('#rv').srcObject=rs;pc.ontrack=e=>{rs.addTrack(e.track);$('#rv').play().catch(()=>{})};pc.oniceconnectionstatechange=()=>{if(pc&&pc.connectionState!=='connected')cst('Связь: '+pc.iceConnectionState)};
+ $('#lv').srcObject=ls_;$('#lv').hidden=!video;$('#cc').hidden=!video;
+ pc.onicecandidate=e=>e.candidate&&cref.collection('ice').add({by:me.uid,c:JSON.stringify(e.candidate)});
+ pc.onconnectionstatechange=()=>{if(pc.connectionState==='connected')cst('Соединено');if(pc.connectionState==='failed'){cst('Не удалось соединиться');setTimeout(()=>end(true),1500)}};
+}
+const flush=()=>{pend.forEach(c=>pc.addIceCandidate(c).catch(()=>{}));pend=[]};
+function watch(){
+ cu.push(cref.collection('ice').onSnapshot(s=>s.docChanges().forEach(x=>{if(x.type!=='added')return;const d=x.doc.data();if(d.by===me.uid)return;const c=JSON.parse(d.c);pc.remoteDescription?pc.addIceCandidate(c).catch(()=>{}):pend.push(c)})));
+ cu.push(cref.onSnapshot(async s=>{const d=s.data();if(!d||!pc)return;
+  if(d.state==='ended')return end(false);
+  if(d.answer&&!pc.remoteDescription){await pc.setRemoteDescription(JSON.parse(d.answer));flush()}}));
+}
+function ui(name,v,status,ringIn){
+ show('#call',1);$('#cn').textContent=name;cst(status);$('#ca').hidden=!ringIn;$('#cm').hidden=ringIn;$('#cc').hidden=ringIn||!v;$('#lv').hidden=ringIn||!v;
+}
+async function start(video){
+ if(!peer||pc)return;
+ try{ui(peer.name,video,'Вызов…',false);cref=db.collection('calls').doc();await prep(video);
+  const o=await pc.createOffer();await pc.setLocalDescription(o);
+  await cref.set({from:me.uid,fromName:me.name,to:peer.uid,video,state:'ringing',created:Date.now(),offer:JSON.stringify(pc.localDescription)});
+  watch();setTimeout(()=>{if(pc&&pc.connectionState!=='connected'&&pc.connectionState!=='connecting')end(true)},45000);
+ }catch(e){end(true);alert('Не удалось начать звонок. Проверь микрофон/камеру и HTTPS.')}
+}
+$('#ac').onclick=()=>start(false);$('#vc').onclick=()=>start(true);
+function listenCalls(){
+ uK&&uK();
+ uK=db.collection('calls').where('to','==',me.uid).onSnapshot(s=>s.docChanges().forEach(x=>{
+  const d=x.doc.data();
+  if(x.type==='added'&&d.state==='ringing'&&Date.now()-(d.created||0)<45000&&!pc&&!inc){inc=x.doc;isVid=d.video;ui(d.fromName,d.video,d.video?'Видеозвонок…':'Аудиозвонок…',true)}
+  if(d.state==='ended'&&inc&&inc.id===x.doc.id&&!pc){inc=null;show('#call',0)}}));
+}
+$('#ca').onclick=async()=>{
+ if(!inc)return;const d=inc.data();cref=inc.ref;inc=null;
+ try{await prep(d.video);$('#ca').hidden=true;$('#cm').hidden=false;$('#cc').hidden=!d.video;$('#lv').hidden=!d.video;cst('Соединение…');
+  await pc.setRemoteDescription(JSON.parse(d.offer));flush();
+  const a=await pc.createAnswer();await pc.setLocalDescription(a);
+  await cref.update({answer:JSON.stringify(pc.localDescription),state:'active'});watch();
+ }catch(e){end(true)}
+};
+function end(notify){
+ if(notify){if(cref)cref.update({state:'ended'}).catch(()=>{});else if(inc)inc.ref.update({state:'ended'}).catch(()=>{})}
+ cu.forEach(f=>f());cu=[];pend=[];inc=null;
+ ls_&&ls_.getTracks().forEach(t=>t.stop());ls_=null;pc&&pc.close();pc=null;cref=null;show('#call',0);
+}
+$('#ce').onclick=()=>end(true);
+$('#cm').onclick=()=>{const t=ls_&&ls_.getAudioTracks()[0];if(t){t.enabled=!t.enabled;$('#cm').style.opacity=t.enabled?1:.4}};
+$('#cc').onclick=()=>{const t=ls_&&ls_.getVideoTracks()[0];if(t){t.enabled=!t.enabled;$('#cc').style.opacity=t.enabled?1:.4}};
+
+// ---- настройки
+$('#sws').append(...ACC.map(c=>{const b=document.createElement('button');b.style.background=c;b.setAttribute('aria-label','Цвет '+c);b.onclick=()=>{ls('a',c);theme()};return b}));
+$('#gear').onclick=()=>show('#set',1);$('#cl').onclick=()=>show('#set',0);
+$('#dk').onclick=()=>{ls('d',ls('d')==='1'?'0':'1');theme()};
+$('#lo').onclick=()=>{show('#set',0);auth.signOut()};
+}
+</script></body></html>
